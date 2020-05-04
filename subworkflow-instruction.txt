@@ -1,0 +1,15 @@
+
+
+#	make a directory called subworkflow
+#	create job.properties & workflow.xml files
+
+
+
+export OOZIE_URL=http://quickstart.cloudera:11000/oozie/
+oozie validate ~/examples/apps/java-main/workflow.xml
+oozie validate ~/examples/apps/java-main/coordinator.xml
+
+#	Delete all the existing files if they are there
+hdfs dfs -rm /user/cloudera/examples/apps/java-main/job.properties
+hdfs dfs -rm /user/cloudera/examples/apps/java-main/workflow.xml
+hdfs dfs -rm /user/cloudera/examples/apps/java-main/coordinator.xml

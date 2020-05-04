@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workflow-app xmlns="uri:oozie:workflow:0.2" name="decision-example">
+
+    <start to="file-size-decision"/>
+
+    <decision name="file-size-decision">
+         <switch>
+            <case to="decision-a">
+              ${wf:conf("jump.to") eq "runA"}
+            </case>
+            <case to="decision-b">
+              ${wf:conf("jump.to") eq "runB"}
+            </case>
+            <default to="end"/>
+        </switch>
+    </decision>
+
+
+    <action name="decision-a">
+         <java>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <configuration>
+                <property>
+                    <name>mapred.job.queue.name</name>
+                    <value>${queueName}</value>
+                </property>
+            </configuration>
+            <main-class>DecisionA</main-class>
+            <arg>Executed</arg>
+            <arg>DecisionA</arg>
+        </java>
+        <ok to="end"/>
+        <error to="fail"/>
+    </action>
+
+    <action name="decision-b">
+        <java>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <configuration>
+                <property>
+                    <name>mapred.job.queue.name</name>
+                    <value>${queueName}</value>
+                </property>
+            </configuration>
+            <main-class>DecisionB</main-class>
+            <arg>Executed</arg>
+            <arg>DecisionB</arg>
+        </java>
+        <ok to="end"/>
+        <error to="fail"/>
+    </action>
+
+
+    <kill name="fail">
+        <message>Sqoop failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
+    </kill>
+    <end name="end"/>
+</workflow-app>

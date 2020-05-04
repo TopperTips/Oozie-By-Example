@@ -1,0 +1,1 @@
+insert OVERWRITE  table mobile select * from tower;

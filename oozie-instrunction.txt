@@ -1,0 +1,154 @@
+Lets start with oozie example
+-----------------------------
+
+#	Cloudera has already given lot of sample files as zip format
+ll /usr/share/doc/oozie-4.1.0+cdh5.13.0+458/oozie-examples.tar.gz
+
+#	make a directory in your local folder
+mkdir oozie-example
+cd oozie-example
+
+
+#	copy the tar file to your local folder
+cp /usr/share/doc/oozie-4.1.0+cdh5.13.0+458/oozie-examples.tar.gz .
+
+#	extract the zip
+tar -xvzf oozie-examples.tar.gz
+
+#	all the example will be available inside the apps folder
+cd apps
+ll
+
+#	now go inside the java-main example
+#	open the job.properties file and make changes to local host respectively
+
+# open etc/hadoop/conf core-site.xml and yarn-site.xml and copy paste the avalues
+# you can also check this by using http://quickstart.cloudera:8088/conf
+
+core-site.xml fs.defaultFS = hdfs://quickstart.cloudera:8020
+yarn-site.xml yarn.resourcemanager.admin.address = quickstart.cloudera:8032
+
+#	once it is done, now we can move the examples to a particular folder
+hdfs dfs -moveFromLocal examples /user/cloudera
+
+#	check if files are there or not
+hdfs dfs -ls -R /user/cloudera/examples/app/java-main
+
+#	now run the job
+#	-config should point to the local directory ~/example/apps/java-main
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -config  ~/examples/apps/java-main/job.properties -run 
+
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -info <job-id>
+
+
+
+
+#	due to some configuration issue, oozie validate workflow does not work, so export and run oozie validate function
+export OOZIE_URL=http://quickstart.cloudera:11000/oozie/
+oozie validate ~/oozie /user/cloudera/oozie/lab/sqoop/workflow.xml
+
+
+--------------------------------------------------
+sqoop command
+--------------------------------------------------
+
+#	make directory structure like oozie/lab/sqoop
+mkdir oozie
+cd oozie
+mkdir lab
+cd lab
+mkdir sqoop
+cd sqoop
+
+#	create job.properties & workflow.xml
+vi job.properties
+vi workflow.xml
+oozie validate ~/oozie /user/cloudera/oozie/lab/sqoop/workflow.xml
+
+hdfs dfs -rm /user/cloudera/oozie/lab/sqoop/job.properties
+hdfs dfs -rm /user/cloudera/oozie/lab/sqoop/workflow.xml
+
+#	once it is done, now we can move the examples to a particular folder
+hdfs dfs -put ~/oozie /user/cloudera
+
+hdfs dfs -put ~/oozie/lab/sqoop/job.properties /user/cloudera/oozie/lab/sqoop
+hdfs dfs -put ~/oozie/lab/sqoop/workflow.xml /user/cloudera/oozie/lab/sqoop
+
+hdfs dfs -mkdir /user/cloudera/oozie/lab/sqoop/lib
+hdfs dfs -put /usr/share/java/mysql-connector-java.jar /user/cloudera/oozie/lab/sqoop/lib
+
+
+#	check if files are there or not
+hdfs dfs -ls -R /user/cloudera/oozie/lab/sqoop
+
+#	now run the job
+#	-config should point to the local directory ~/oozie/lab/sqoop/job.properties
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -config  ~/oozie/lab/sqoop/job.properties -run 
+
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -info 0000001-180811101018941-oozie-oozi-W
+
+
+
+--------------------------------------------------
+sqoop command with fork and join
+--------------------------------------------------
+
+#	make directory structure like oozie/lab/sqoop-fork
+
+
+#	create job.properties & workflow.xml
+vi job.properties
+vi workflow.xml
+oozie validate ~/oozie/lab/sqoop-fork/workflow.xml
+
+#	once it is done, now we can move the examples to a particular folder
+hdfs dfs -put oozie/lab/sqoop-fork /user/cloudera/oozie/lab
+
+#	check if files are there or not
+hdfs dfs -ls -R /user/cloudera/oozie/lab/sqoop-fork
+
+#	now run the job
+#	-config should point to the local directory ~/oozie/lab/sqoop-fork/job.properties
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -config  ~/oozie/lab/sqoop-fork/job.properties -run 
+
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -info 0000001-180811101018941-oozie-oozi-W
+
+
+--------------------------------------------------
+decision command 
+--------------------------------------------------
+
+#	make directory structure like oozie/lab/decision & oozie/lab/decision/lib
+
+vi DecisionA.java
+vi DecisionB.java
+javac *.java
+jar -cvf DecisionLab.jar *.class
+rm *.class
+
+#	create job.properties & workflow.xml
+vi job.properties
+vi workflow.xml
+oozie validate ~/oozie/lab/decision/workflow.xml
+
+#	once it is done, now we can move the examples to a particular folder
+hdfs dfs -put oozie/lab/decision /user/cloudera/oozie/lab
+
+#	check if files are there or not
+hdfs dfs -ls -R /user/cloudera/oozie/lab/decision
+
+#	now run the job
+#	-config should point to the local directory ~/oozie/lab/sqoop-fork/job.properties
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -config  ~/oozie/lab/decision/job.properties -run 
+
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -info 0000001-180811101018941-oozie-oozi-W
+
+# 	extra correction command
+rm -rf ~/oozie/lab/decision/workflow.xml
+vi ~/oozie/lab/decision/workflow.xml
+oozie validate ~/oozie/lab/decision/workflow.xml
+hdfs dfs -rm /user/cloudera/oozie/lab/decision/workflow.xml
+hdfs dfs -put ~/oozie/lab/decision/workflow.xml /user/cloudera/oozie/lab/decision/
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -Djump.to=runA -config  ~/oozie/lab/decision/job.properties -run 
+
+

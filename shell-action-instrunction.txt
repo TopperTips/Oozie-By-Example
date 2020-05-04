@@ -1,0 +1,126 @@
+----------------------------
+Oozie Shell Action
+----------------------------
+
+
+1. The shell action runs a Shell command.
+2. The workflow job will wait until the Shell command completes before continuing to the next action.
+3. To run the Shell job, following are the must element
+	job-tracker
+	name-node
+	exec
+4. A shell action can be configured to create or delete HDFS directories before starting the Shell job.
+5. This could be Unix commands, Perl/Python scripts, or even Java programs invoked through the Unix shell.
+6. The shell command runs on an arbitrary Hadoop cluster node and the commands being run have to be available locally on that node
+
+------------------------------------------------------
+The elements that make up this action are as follows
+------------------------------------------------------
+• job-tracker (required)
+• name-node (required)
+• prepare					-The prepare element, if present, indicates a list of paths to delete or create before starting the job
+• job-xml					-he job-xml element, if present, specifies a file containing configuration for the Shell job
+• configuration				-The configuration element, if present, contains configuration properties that are passed to the Shell job
+• exec (required) 			- element has the actual shell command
+• argument					- arguments passed in through the <argument> elements
+• env-var					- contains the Unix environment variable, and it’s defined using the standard Unix syntax (e.g., PATH=$PATH:my_path).
+• file						- If the excutable is a script instead of a standard Unix command, the script needs to be copied to the workflow root directory on HDFS and defined via the <file> element as always
+• archive					-This is a nice and self-contained approach to isolate your environment from what’s available on the node 
+• capture-output			- if the <capture_output> element is present here, Oozie will capture the output of the shell command and make it available to the workflow application. This can then be accessed by the workflow through the action:output() EL function.
+
+
+--------------------------------
+Sample Example
+--------------------------------
+<action name="myShellAction">
+	<shell xmlns="uri:oozie:shell-action:0.2">
+		<job-tracker>jt.mycompany.com:8032</job-tracker>
+		<name-node>hdfs://nn.mycompany.com:8020</name-node>
+		<exec>/usr/bin/python</exec>
+		<argument>test.py</argument>
+		<argument>07/21/2014/argument>
+		<env-var>TZ=PST</env-var>		<!-- this is equal to export TZ=PST and will be used in shell-->
+		<file>test.py#test.py</file>	<!-- this is copy the test.py from hdfs to local tmp folder before runnin-->
+		<arhive>
+		<capture-output/>
+	</shell>
+	<ok to="success"/>
+	<error to="fail"/>
+</action>
+
+So above is equal to
+export TZ=PST
+/usr/bin/python test.py 07/21/2014
+
+
+
+----------------------------------
+Lab Practice -1 
+----------------------------------
+
+#	Create directory as shown below
+cd ~
+mkdir ~/oozie/lab/shell
+vi job.properties
+vi workflow.xml
+
+
+#	check if workflow.xml is valid or not
+export OOZIE_URL=http://quickstart.cloudera:11000/oozie/
+oozie validate ~/oozie/lab/shell/workflow.xml
+
+hdfs dfs -mkdir /user/cloudera/oozie/lab/shell
+
+#	Delete all the existing files if they are there
+hdfs dfs -rm /user/cloudera/oozie/lab/shell/job.properties
+hdfs dfs -rm /user/cloudera/oozie/lab/shell/workflow.xml
+
+
+#	move all the files to the hdfs location
+hdfs dfs -put ~/oozie/lab/shell/job.properties /user/cloudera/oozie/lab/shell/
+hdfs dfs -put ~/oozie/lab/shell/workflow.xml /user/cloudera/oozie/lab/shell/
+
+#	check if they moved or not
+hdfs dfs -ls -R /user/cloudera/oozie/lab/shell/
+
+#	run the shell 
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -config  ~/oozie/lab/shell/job.properties -run 
+
+#	check the job status
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -info jobID
+
+
+
+
+----------------------------------
+Lab Practice -2
+----------------------------------
+
+#	Create directory as shown below
+cd ~
+mkdir ~/oozie/lab/shell-impala
+mkdir ~/oozie/lab/shell-impala/lib
+vi job.properties
+vi workflow.xml
+cd ~/oozie/lab/shell-impala/lib
+vi run-query.sh
+
+
+#	check if workflow.xml is valid or not
+export OOZIE_URL=http://quickstart.cloudera:11000/oozie/
+oozie validate ~/oozie/lab/shell-impala/workflow.xml
+
+hdfs dfs -rm -R oozie/lab/shell-impala
+hdfs dfs -put  ~/oozie/lab/shell-impala /user/cloudera/oozie/lab/
+
+
+#	check if they moved or not
+hdfs dfs -ls -R /user/cloudera/oozie/lab/shell-impala/
+
+#	run the shell 
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -config  ~/oozie/lab/shell-impala/job.properties -run 
+
+#	check the job status
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -info jobID
+
+

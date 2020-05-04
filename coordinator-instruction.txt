@@ -1,0 +1,66 @@
+
+
+Step 1 : open folder examples/src/master/apps/java-main/
+
+Setp 2 : open job.properties file & change these values
+
+#...........................................
+nameNode=hdfs://quickstart.cloudera:8020
+jobTracker=quickstart.cloudera:8032
+queueName=default
+examplesRoot=examples
+
+oozie.use.system.libpath=true
+oozie.libpath=${nameNode}/user/oozie/share/lib/lib_20171023091808
+
+#oozie.wf.application.path=${nameNode}/user/${user.name}/${examplesRoot}/apps/java-main
+
+#following items are added newly
+oozie.coord.application.path=${nameNode}/user/${user.name}/${examplesRoot}/apps/java-main/coordinator.xml
+start=2018-08-16T05:05Z
+end=2018-08-16T05:20Z
+#...........................................
+
+Step 4 : open the coordinator.xml and change the follwing like from hour to min in coordinator-app element
+
+#............................................		
+<coordinator-app name="aggregator-coord" frequency="${coord:minutes(5)}" start="${start}" end="${end}" timezone="UTC"
+                 xmlns="uri:oozie:coordinator:0.2">
+    <controls>
+        <concurrency>1</concurrency>
+    </controls>
+
+    <action>
+        <workflow>
+            <app-path>${nameNode}/user/${coord:user()}/${examplesRoot}/apps/java-main/workflow.xml</app-path>
+            
+        </workflow>
+    </action>
+</coordinator-app>
+#............................................	
+
+export OOZIE_URL=http://quickstart.cloudera:11000/oozie/
+oozie validate ~/examples/apps/java-main/workflow.xml
+oozie validate ~/examples/apps/java-main/coordinator.xml
+
+#	Delete all the existing files if they are there
+hdfs dfs -rm /user/cloudera/examples/apps/java-main/job.properties
+hdfs dfs -rm /user/cloudera/examples/apps/java-main/workflow.xml
+hdfs dfs -rm /user/cloudera/examples/apps/java-main/coordinator.xml
+
+
+
+#	move all the files to the hdfs location
+hdfs dfs -put ~/examples/apps/java-main/job.properties /user/cloudera/examples/apps/java-main/
+hdfs dfs -put ~/examples/apps/java-main/workflow.xml /user/cloudera/examples/apps/java-main/
+hdfs dfs -put ~/examples/apps/java-main/coordinator.xml /user/cloudera/examples/apps/java-main/
+
+#	check if files are there or not
+hdfs dfs -ls -R /user/cloudera/examples/apps/java-main
+
+#	go to browser and check the coordinator tab to see if any job registered or not and then run it.
+#	run the coordinator
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -config  ~/examples/apps/java-main/job.properties -run 
+
+#	Once submitted, check the coordinator tab and click on the entry and it will open up a new 
+

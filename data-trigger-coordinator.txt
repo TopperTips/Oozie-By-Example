@@ -1,0 +1,158 @@
+
+Data Based Coordinator
+-----------------------
+
+Defining a dataset : There are five attributes to define a dataset in Oozie
+............................................................................
+
+name : 
+	This specifies the logical name of a dataset. There can be more than one dataset in a coordinator. The name of a dataset must be unique within a coordinator.
+
+initial-instance : 
+	This specifies the first time instance of valid data in a dataset. This time instance is specified in a combined date and time format. Any reference to data earlier than this time is meaningless.
+
+frequency : 
+	This determines the interval of successive data instances. A user can utilize any EL functions to define the frequency.
+
+uri-template : 
+	This specifies the template of the data directory in a dataset. The data directory of most batch systems often contains year, month, day, hour, and minute 
+
+done-flag : 
+	This specifies the filename that is used to indicate whether the data is ready to be consumed
+
+..................
+Example
+..................
+
+<dataset name="ds_input1" frequency="${coord:hours(6)}" initial-instance="2018-08-15T02:00Z">
+	<uri-template>${baseDataDir}/revenue_feed/${YEAR}-${MONTH}-${DAY}-${HOUR}</uri-template>
+	<done-flag>_trigger</done-flag>
+</dataset>
+
+
+...............
+input-events
+...............
+Whereas datasets declare data items of interest, <input-events> describe the actual instance(s) of dependent dataset for this coordinator. 
+A workflow will not start until all the data instances defined in the input-events are available.
+There is only one <input-events> section in a coordinator, but it can include one or more data-in sections. 
+Each data-in handles one dataset dependency. 
+For instance, if a coordinator depends on two different datasets, there will be two data-in definitions in the input-events section. 
+In turn, a data-in can include one or more data instances of that dataset. 
+Each data instance typically corresponds to a time interval and has a direct association with one directory on HDFS.
+
+
+
+
+....................
+job.properites
+....................
+
+
+nameNode=hdfs://quickstart.cloudera:8020
+jobTracker=quickstart.cloudera:8032
+queueName=default
+
+oozie.use.system.libpath=true
+oozie.libpath=${nameNode}/user/oozie/share/lib/lib_20171023091808
+
+oozie.coord.application.path=${nameNode}/user/${user.name}/${examplesRoot}/apps/aggregator/coordinator.xml
+start=2018-08-16T09:40Z
+end=2018-08-16T10:40Z
+
+....................
+workflow.properites
+....................
+
+<workflow-app xmlns="uri:oozie:workflow:0.2" name="aggregator-wf">
+    <start to="aggregator"/>
+    <action name="aggregator">
+        <map-reduce>
+            <job-tracker>${jobTracker}</job-tracker>
+            <name-node>${nameNode}</name-node>
+            <prepare>
+                <delete path="${outputData}"/>
+            </prepare>
+            <configuration>
+                <property>
+                    <name>mapred.job.queue.name</name>
+                    <value>${queueName}</value>
+                </property>
+                <property>
+                    <name>mapred.mapper.class</name>
+                    <value>org.apache.oozie.example.SampleMapper</value>
+                </property>
+                <property>
+                    <name>mapred.reducer.class</name>
+                    <value>org.apache.oozie.example.SampleReducer</value>
+                </property>
+                <property>
+                    <name>mapred.map.tasks</name>
+                    <value>1</value>
+                </property>
+                <property>
+                    <name>mapred.input.dir</name>
+                    <value>${inputData}</value>
+                </property>
+                <property>
+                    <name>mapred.output.dir</name>
+                    <value>${outputData}</value>
+                </property>
+            </configuration>
+        </map-reduce>
+        <ok to="end"/>
+        <error to="fail"/>
+    </action>
+    <kill name="fail">
+        <message>Map/Reduce failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
+    </kill>
+    <end name="end"/>
+</workflow-app>
+
+
+...................
+coordinator.xml
+...................
+<coordinator-app name="aggregator-coord" frequency="${coord:minutes(10)}" start="${start}" end="${end}" timezone="UTC"
+                 xmlns="uri:oozie:coordinator:0.2">
+    <controls>
+        <concurrency>1</concurrency>
+    </controls>
+
+    <datasets>
+        <dataset name="raw-logs" frequency="${coord:minutes(5)}" initial-instance="2018-08-16T09:50Z" timezone="UTC">
+            <uri-template>${nameNode}/user/${coord:user()}/examples/input-data/rawLogs/${YEAR}/${MONTH}/${DAY}/${HOUR}/${MINUTE}</uri-template>
+        </dataset>
+    </datasets>
+
+    <input-events>
+        <data-in name="input" dataset="raw-logs">
+            <start-instance>${coord:current(-2)}</start-instance>
+            <end-instance>${coord:current(0)}</end-instance>
+        </data-in>
+    </input-events>
+
+   <action>
+        <workflow>
+            <app-path>${nameNode}/user/${coord:user()}/examples/apps/aggregator/workflow.xml</app-path>
+        </workflow>
+    </action>
+</coordinator-app>
+
+
+
+..........................
+Run the time based stuff
+..........................
+
+export OOZIE_URL=http://quickstart.cloudera:11000/oozie/
+oozie validate ~/examples/apps/aggregator/workflow.xml
+oozie validate ~/examples/apps/aggregator/coordinator.xml
+
+hdfs dfs -put examples 
+
+hdfs dfs -ls -R examples/apps/aggregator
+
+
+oozie job -oozie http://quickstart.cloudera:11000/oozie/ -config  ~/examples/apps/aggregator/job.properties -run 
+
